@@ -14,7 +14,7 @@
 
 入力画像
 
-![demo](./readme_img/input_letter_sample.png)
+![demo](./readme_img/letter_sample.png)
 
 Webアプリ画面
 
@@ -40,15 +40,16 @@ Webアプリ画面
 
 ### デプロイ
 
-- 設定は`lib/app-config.ts`で行います
+1. 設定は`lib/app-config.ts`で行います
 
+2. AWS CDKでデプロイ
 ```sh
 $ npm ci
 $ cdk deploy
 ```
 
-- RDSクエリエディタから `resources/sql/setup_postgis.sql` のクエリを実行しAuroraで地理情報を扱えるようにします
-- RDSクエリエディタから `resources/sql/create_tables.sql` のクエリを実行し必要なテーブルとデータを作成します
+3. RDSクエリエディタから `resources/sql/setup_postgis.sql` のクエリを実行しAuroraで地理情報を扱えるようにします
+4. RDSクエリエディタから `resources/sql/create_tables.sql` のクエリを実行し必要なテーブルとデータを作成します
 
 ## License
 
