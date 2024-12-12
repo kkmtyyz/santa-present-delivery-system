@@ -78,7 +78,6 @@ export class SpApi extends Construct {
       role: this.functionRole,
       securityGroups: [this.functionSg],
       vpc: spVpc.vpc,
-      //vpcSubnets: { subnets: spVpc.publicSubnets },
       vpcSubnets: { subnets: spVpc.privateSubnets },
       applicationLogLevelV2: lambda.ApplicationLogLevel.DEBUG,
       loggingFormat: lambda.LoggingFormat.JSON,
