@@ -1,0 +1,201 @@
+<!doctype html>
+<html>
+  <head>
+    <title>プレゼント配達経路アプリ</title>
+    <meta charset="utf-8" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+      integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"
+      integrity="sha384-fbbOQedDUMZZ5KreZpsbe1LCZPVmfTnH7ois6mU1QK+m14rQ1l2bGBq41eYeM/fS"
+      crossorigin="anonymous"
+    ></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@here/flexpolyline@0.1.0/index.min.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.3/src/leaflet.geometryutil.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-arrowheads@1.4.0/src/leaflet-arrowheads.min.js"></script>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="row mb-2 text-center">
+        <p class="fs-3">プレゼント配達経路アプリ</p>
+      </div>
+
+      <div class="row mb-2">
+        <label for="lambdaFunctionUrlInput" class="col-2 col-form-label"
+          >Lambda Function URL</label
+        >
+        <div class="col-9">
+          <input
+            type="text"
+            class="form-control"
+            id="lambdaFunctionUrlInput"
+            placeholder="https://example.aws"
+          />
+        </div>
+      </div>
+
+      <div class="row mb-2">
+        <label for="apiKeyInput" class="col-2 col-form-label">API Key</label>
+        <div class="col-9">
+          <input type="password" class="form-control" id="apiKeyInput" />
+        </div>
+        <div class="col-1">
+          <button type="submit" class="btn btn-primary" onclick="run()">
+            Request
+          </button>
+        </div>
+      </div>
+
+      <div class="row my-3">
+        <div id="map" style="height: 600px"></div>
+      </div>
+    </div>
+
+    <script>
+      let map = L.map("map").setView([35.681386, 139.767123], 16);
+      //L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png", {
+        //attribution:
+        //  '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        attribution:
+          '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>',
+      }).addTo(map);
+
+      async function getDeliveryInfo(lambdaFunctionUrl, apiKey) {
+        try {
+          const url = lambdaFunctionUrl + "?apiKey=" + apiKey;
+          const req = {
+            method: "GET",
+          };
+          console.log(url);
+          const res = await fetch(url, req);
+          const resJson = await res.json();
+          /*
+           * resJson = {
+           *   "facility": {
+           *     "name": "<facility_name>",
+           *     "address": "<address>",
+           *     "point": [<latitude>, <longitude>]
+           *   },
+           *   "presents": [
+           *     {
+           *       "name": "<present_name>",
+           *       "address": "<address>",
+           *       "point": [<latitude>, <longitude>]
+           *     }
+           *   ],
+           *   "route_flex_polylines": [
+           *     <flex_polyline>,
+           *   ]
+           * }
+           */
+          console.log(resJson);
+          if (
+            !("facility" in resJson) &&
+            resJson.presents.length > 0 &&
+            resJson.route_flex_polylines.length > 0
+          ) {
+            raise;
+          }
+          return resJson;
+        } catch (e) {
+          console.error(e);
+          alert("APIエラー");
+        }
+      }
+
+      async function run() {
+        // フォームから情報取得
+        const lambdaFunctionUrl = document.getElementById(
+          "lambdaFunctionUrlInput",
+        ).value;
+        const apiKey = document.getElementById("apiKeyInput").value;
+        if (lambdaFunctionUrl.length === 0 && apiKey.length === 0) {
+          return;
+        }
+
+        // 配達経路情報取得
+        const delivaryInfo = await getDeliveryInfo(lambdaFunctionUrl, apiKey);
+
+        // 地図上に配達経路情報を表示
+        // 出発地点を中央に表示
+        map.panTo([
+          delivaryInfo.facility.point[0],
+          delivaryInfo.facility.point[1],
+        ]);
+        let facility_marker = L.marker([
+          delivaryInfo.facility.point[0],
+          delivaryInfo.facility.point[1],
+        ]).addTo(map);
+        facility_marker
+          .bindPopup(
+            '<b style="color: red;">' + delivaryInfo.facility.name + "</b>",
+          )
+          .openPopup();
+
+        // 配達先をマーカーでマーク
+        delivaryInfo.presents.map((present) =>
+          L.marker(present.point)
+            .addTo(map)
+            .bindPopup(
+              '<b style="color: red;">' +
+                present.name +
+                "<br>" +
+                present.address +
+                "</b>",
+            ),
+        );
+
+        // 配達ルートのflex polylineをデコード
+        deliveryRoutes = delivaryInfo.route_flex_polylines.map((flexPolyline) =>
+          decode(flexPolyline),
+        );
+        console.log(deliveryRoutes[0].polyline);
+
+        // 配達ルートを描画
+        deliveryRoutes.map((route) => addPolyline(route.polyline));
+      }
+
+      function addPolyline(polyline) {
+        L.polyline(polyline, {
+          color: "red",
+          weight: 5,
+        })
+          .arrowheads()
+          .addTo(map);
+      }
+
+      function addCircle(point) {
+        L.circle(point, {
+          color: "red",
+          fillColor: "red",
+          fillOpacity: 0.7,
+          radius: 5,
+        }).addTo(map);
+      }
+    </script>
+  </body>
+</html>
