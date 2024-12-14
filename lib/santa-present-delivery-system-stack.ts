@@ -38,6 +38,14 @@ export class SantaPresentDeliverySystemStack extends cdk.Stack {
       spApi,
     });
 
+    new cdk.CfnOutput(this, "LetterBucketName", {
+      value: spLetterAnalysisFunction.letterBucket.bucketName,
+    });
+
+    new cdk.CfnOutput(this, "webBucketName", {
+      value: spWeb.webContentsBucket.bucketName,
+    });
+
     new cdk.CfnOutput(this, "WebUrl", {
       value: `https://${spWeb.webDistribution.distributionDomainName}`,
     });

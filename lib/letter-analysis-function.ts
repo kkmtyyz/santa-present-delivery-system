@@ -37,7 +37,6 @@ export class SpLetterAnalysisFunction extends Construct {
 
     // 手紙の画像が格納されるバケット
     this.letterBucket = new s3.Bucket(this, "LetterBucket", {
-      bucketName: `${spConfig.appName}-letter`,
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     });

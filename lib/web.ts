@@ -20,7 +20,6 @@ export class SpWeb extends Construct {
 
     // webサイトホスティング用バケット
     this.webContentsBucket = new s3.Bucket(this, "WebContentsBucket", {
-      bucketName: `${spConfig.appName}-web`,
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       publicReadAccess: true,
