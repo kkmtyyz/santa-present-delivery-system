@@ -69,4 +69,3 @@ class Aurora:
             self.conn_pool.putconn(conn)
             logger.error("select", extra={"error": repr(e)})
             raise
-

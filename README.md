@@ -9,7 +9,6 @@
 - AWS Marketplaceで提供されるSaaSを使い、複数の住所への最適な配達経路を取得
 - WebアプリとAPIを簡単にリリース（API GatewayやALBを使わない）
 
-
 ## イメージ
 
 入力画像
@@ -20,8 +19,9 @@ Webアプリ画面
 
 ![demo](./readme_img/web_app_01.png)
 
-
 ![demo](./readme_img/web_app_02.png)
+
+![demo](./readme_img/web_app_03.png)
 
 ## アーキテクチャ図
 
@@ -43,6 +43,7 @@ Webアプリ画面
 1. 設定は`lib/app-config.ts`で行います
 
 2. AWS CDKでデプロイ
+
 ```sh
 $ npm ci
 $ cdk deploy
@@ -54,6 +55,3 @@ $ cdk deploy
 ## License
 
 [MIT](./LICENSE-MIT)
-
-
-
