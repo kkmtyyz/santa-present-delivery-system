@@ -22,14 +22,6 @@ export class SpWeb extends Construct {
     this.webContentsBucket = new s3.Bucket(this, "WebContentsBucket", {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
-      publicReadAccess: true,
-      blockPublicAccess: new s3.BlockPublicAccess({
-        blockPublicAcls: false,
-        blockPublicPolicy: false,
-        ignorePublicAcls: false,
-        restrictPublicBuckets: false,
-      }),
-      websiteIndexDocument: "index.html",
     });
 
     new s3Deploy.BucketDeployment(this, "WebContentsDeploy", {
@@ -43,8 +35,11 @@ export class SpWeb extends Construct {
       "WebDistribution",
       {
         defaultBehavior: {
-          origin: new origins.S3StaticWebsiteOrigin(this.webContentsBucket),
+          origin: origins.S3BucketOrigin.withOriginAccessControl(
+            this.webContentsBucket,
+          ),
         },
+        defaultRootObject: "index.html",
       },
     );
   }
