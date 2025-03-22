@@ -1,37 +1,67 @@
 import { Construct } from "constructs";
-import { Duration } from "aws-cdk-lib";
+import { RemovalPolicy, Duration } from "aws-cdk-lib";
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as s3n from "aws-cdk-lib/aws-s3-notifications";
+import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as lambdaPython from "@aws-cdk/aws-lambda-python-alpha";
+import * as lambdaEventSource from "aws-cdk-lib/aws-lambda-event-sources";
 import * as iam from "aws-cdk-lib/aws-iam";
-import { SpConfig } from "./app-config";
-import { SpVpc } from "./vpc";
-import { SpWeb } from "./web";
+import { SpConfig } from "../app-config";
+import { SpVpc } from "../network/vpc";
 import { SpLambdaLayer } from "./lambda-layer";
 
-interface SpApiProps {
+interface SpLetterAnalysisFunctionProps {
   spConfig: SpConfig;
   spVpc: SpVpc;
   spLambdaLayer: SpLambdaLayer;
-  spWeb: SpWeb;
 }
 
-export class SpApi extends Construct {
+export class SpLetterAnalysisFunction extends Construct {
+  letterBucket: s3.Bucket;
+  letterEventQueue: sqs.Queue;
   functionRole: iam.Role;
   functionSg: ec2.SecurityGroup;
   function: lambda.Function;
-  apiUrl: string;
 
-  constructor(scope: Construct, id: string, props: SpApiProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: SpLetterAnalysisFunctionProps,
+  ) {
     super(scope, id);
     const spConfig = props.spConfig;
     const spVpc = props.spVpc;
-    const spLambdalayer = props.spLambdaLayer;
-    const spWeb = props.spWeb;
+    const spLambdaLayer = props.spLambdaLayer;
+
+    // 手紙の画像が格納されるバケット
+    this.letterBucket = new s3.Bucket(this, "LetterBucket", {
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
+    // Lambdaトリガー用キュー
+    const LetterEventDeadQueue = new sqs.Queue(this, "LetterEventDeadQueue", {
+      visibilityTimeout: cdk.Duration.seconds(30),
+    });
+
+    this.letterEventQueue = new sqs.Queue(this, "LetterEventQueue", {
+      visibilityTimeout: cdk.Duration.minutes(15),
+      deadLetterQueue: {
+        maxReceiveCount: 3,
+        queue: LetterEventDeadQueue,
+      },
+    });
+
+    // Lambdaトリガー用イベント通知
+    this.letterBucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new s3n.SqsDestination(this.letterEventQueue),
+    );
 
     // Lambda関数用IAM Role
-    this.functionRole = new iam.Role(this, "FunctionRole", {
+    this.functionRole = new iam.Role(this, "LambdaFunctionRole", {
       assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
     });
     this.functionRole.addManagedPolicy(
@@ -60,6 +90,19 @@ export class SpApi extends Construct {
             `arn:aws:ssm:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:parameter${spConfig.herePlatformAPIKeyParameter}`,
           ],
         }),
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: ["s3:GetObject"],
+          resources: [
+            this.letterBucket.bucketArn,
+            `${this.letterBucket.bucketArn}/*`,
+          ],
+        }),
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: ["bedrock:InvokeModel"],
+          resources: ["*"],
+        }),
       ],
     }).attachToRole(this.functionRole);
 
@@ -69,7 +112,7 @@ export class SpApi extends Construct {
     });
 
     // Function
-    this.function = new lambda.Function(this, "ApiFunction", {
+    this.function = new lambda.Function(this, "AnalyzeLetterFunction", {
       handler: "lambda_function.lambda_handler",
       runtime: lambda.Runtime.PYTHON_3_12,
       timeout: Duration.minutes(15),
@@ -81,27 +124,21 @@ export class SpApi extends Construct {
       vpcSubnets: { subnets: spVpc.privateSubnets },
       applicationLogLevelV2: lambda.ApplicationLogLevel.DEBUG,
       loggingFormat: lambda.LoggingFormat.JSON,
-      code: lambda.Code.fromAsset("resources/lambda/api-function"),
-      layers: [spLambdalayer.layer],
-      allowPublicSubnet: true,
+      code: lambda.Code.fromAsset("resources/lambda/letter-analysis-function"),
+      layers: [spLambdaLayer.layer],
       environment: {
-        APP_API_KEY_PARAMETER: spConfig.appAPIKeyParameter,
+        S3_REGION: cdk.Stack.of(this).region,
+        BEDROCK_MODEL_REGION: cdk.Stack.of(this).region,
+        BEDROCK_MODEL_ID: spConfig.modelId,
         AURORA_SECRET_NAME: spConfig.auroraSecretName,
-        HERE_DEVELOPER_API_KEY_PARAMETER: spConfig.hereDeveloperAPIKeyParameter,
-        HERE_PLATFORM_API_KEY_PARAMETER: spConfig.herePlatformAPIKeyParameter,
       },
     });
 
-    const functionUrl = this.function.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-      cors: {
-        allowedMethods: [lambda.HttpMethod.ALL],
-        allowedOrigins: [
-          `https://${spWeb.webDistribution.distributionDomainName}`,
-        ],
-      },
-    });
-
-    this.apiUrl = functionUrl.url;
+    // SQSからトリガーする
+    this.function.addEventSource(
+      new lambdaEventSource.SqsEventSource(this.letterEventQueue, {
+        reportBatchItemFailures: true,
+      }),
+    );
   }
 }

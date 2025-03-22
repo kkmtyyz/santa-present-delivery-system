@@ -4,7 +4,7 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3Deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
-import { SpConfig } from "./app-config";
+import { SpConfig } from "../app-config";
 
 interface SpWebProps {
   spConfig: SpConfig;

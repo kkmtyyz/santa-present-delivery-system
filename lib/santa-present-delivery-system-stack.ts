@@ -1,13 +1,13 @@
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { SpConfig } from "./app-config";
-import { SpVpc } from "./vpc";
-import { SpVpcEndpoint } from "./vpc-endpoint";
-import { SpLambdaLayer } from "./lambda-layer";
-import { SpLetterAnalysisFunction } from "./letter-analysis-function";
-import { SpWeb } from "./web";
-import { SpApi } from "./api";
-import { SpAurora } from "./aurora";
+import { SpVpc } from "./network/vpc";
+import { SpVpcEndpoint } from "./network/vpc-endpoint";
+import { SpLambdaLayer } from "./backend/lambda-layer";
+import { SpLetterAnalysisFunction } from "./backend/letter-analysis-function";
+import { SpWeb } from "./frontend/web";
+import { SpApi } from "./backend/api";
+import { SpAurora } from "./db/aurora";
 
 export class SantaPresentDeliverySystemStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {

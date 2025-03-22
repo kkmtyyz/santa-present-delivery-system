@@ -2,10 +2,10 @@ import { Construct } from "constructs";
 import { RemovalPolicy } from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as rds from "aws-cdk-lib/aws-rds";
-import { SpConfig } from "./app-config";
-import { SpVpc } from "./vpc";
-import { SpApi } from "./api";
-import { SpLetterAnalysisFunction } from "./letter-analysis-function";
+import { SpConfig } from "../app-config";
+import { SpVpc } from "../network/vpc";
+import { SpApi } from "../backend/api";
+import { SpLetterAnalysisFunction } from "../backend/letter-analysis-function";
 
 interface SpAuroraProps {
   spConfig: SpConfig;
